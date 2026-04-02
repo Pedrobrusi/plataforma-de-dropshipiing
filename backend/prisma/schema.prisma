@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         String   @default("user")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stores       Store[]
+  apiKeys      ApiKey[]
+
+  @@map("users")
+}
+
+model Store {
+  id           String   @id @default(uuid())
+  name         String
+  domain       String   @unique
+  platform     String   @default("shopify")
+  accessToken  String?
+  isActive     Boolean  @default(true)
+  currency     String   @default("BRL")
+  timezone     String   @default("America/Sao_Paulo")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  products     Product[]
+  orders       Order[]
+  ads          Ad[]
+  alerts       Alert[]
+  metrics      StoreMetrics[]
+
+  @@map("stores")
+}
+
+model Supplier {
+  id           String   @id @default(uuid())
+  name         String
+  website      String?
+  email        String?
+  country      String   @default("CN")
+  platform     String   @default("aliexpress")
+  rating       Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  products     Product[]
+
+  @@map("suppliers")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  price          Float
+  comparePrice   Float?
+  cost           Float?
+  sku            String?
+  barcode        String?
+  weight         Float?
+  weightUnit     String   @default("kg")
+  status         String   @default("draft")
+  images         String   @default("[]")
+  tags           String   @default("[]")
+  shopifyId      String?
+  supplierUrl    String?
+  supplierPrice  Float?
+  profit         Float?
+  profitMargin   Float?
+  inventory      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  supplierId     String?
+  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+
+  orderItems     OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  orderNumber     String
+  status          String   @default("pending")
+  fulfillmentStatus String @default("unfulfilled")
+  financialStatus String   @default("pending")
+  totalPrice      Float
+  subtotalPrice   Float
+  totalTax        Float    @default(0)
+  totalShipping   Float    @default(0)
+  currency        String   @default("BRL")
+  customerEmail   String?
+  customerName    String?
+  shippingAddress String?
+  shopifyId       String?
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  quantity    Int
+  price       Float
+  totalPrice  Float
+  title       String
+  sku         String?
+  createdAt   DateTime @default(now())
+
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Ad {
+  id           String   @id @default(uuid())
+  name         String
+  platform     String
+  status       String   @default("active")
+  budget       Float
+  spent        Float    @default(0)
+  impressions  Int      @default(0)
+  clicks       Int      @default(0)
+  conversions  Int      @default(0)
+  revenue      Float    @default(0)
+  roas         Float    @default(0)
+  cpc          Float    @default(0)
+  ctr          Float    @default(0)
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("ads")
+}
+
+model Alert {
+  id           String   @id @default(uuid())
+  type         String
+  severity     String   @default("info")
+  title        String
+  message      String
+  isRead       Boolean  @default(false)
+  metadata     String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+}
+
+model StoreMetrics {
+  id              String   @id @default(uuid())
+  date            DateTime
+  revenue         Float    @default(0)
+  orders          Int      @default(0)
+  visitors        Int      @default(0)
+  conversionRate  Float    @default(0)
+  avgOrderValue   Float    @default(0)
+  adSpend         Float    @default(0)
+  profit          Float    @default(0)
+  roas            Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, date])
+  @@map("store_metrics")
+}
+
+model ApiKey {
+  id           String   @id @default(uuid())
+  name         String
+  key          String   @unique
+  service      String
+  isActive     Boolean  @default(true)
+  lastUsed     DateTime?
+  createdAt    DateTime @default(now())
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
